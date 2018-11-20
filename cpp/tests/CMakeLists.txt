@@ -2,13 +2,14 @@
 
 project(CUDF_TESTS LANGUAGES C CXX CUDA)
 
+
 ###################################################################################################
 # - compiler function -----------------------------------------------------------------------------
 
 function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     add_executable(${CMAKE_TEST_NAME} ${CMAKE_TEST_SRC})
     set_target_properties(${CMAKE_TEST_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_link_libraries(${CMAKE_TEST_NAME} gmock_main gmock gtest_main gtest pthread cudf arrow)
+    target_link_libraries(${CMAKE_TEST_NAME} gmock_main gmock gtest gtest_main  pthread cudf arrow)
     set_target_properties(${CMAKE_TEST_NAME} PROPERTIES
                             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/gtests")
     add_test(NAME ${CMAKE_TEST_NAME} COMMAND ${CMAKE_TEST_NAME})

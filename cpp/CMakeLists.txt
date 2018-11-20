@@ -176,7 +176,7 @@ endif(CMAKE_BUILD_TYPE MATCHES Debug)
 # - link libraries --------------------------------------------------------------------------------
 
 target_link_libraries(rmm cudart cuda NVStrings)
-target_link_libraries(cudf arrow rmm)
+target_link_libraries(cudf arrow rmm gtest gtest_main)
 
 ###################################################################################################
 # - python cffi bindings --------------------------------------------------------------------------
