@@ -32,6 +32,8 @@ bool checkFile(const char *fname)
 	return (stat(fname, &st) ? 0 : 1);
 }
 
+
+
 // DESCRIPTION: Simple test internal helper class to transfer cudf column data
 // from device to host for test comparisons and debugging/development
 template <typename T>
@@ -60,6 +62,13 @@ public:
 private:
 	std::vector<T> m_hostdata;
 };
+
+
+void compare_floats(gdf_host_column<double> host_values, std::vector<double> compare_values){
+	for(size_t index = 0; index < compare_values.size(); index++){
+		EXPECT_DOUBLE_EQ(host_values.hostdata()[index], compare_values[index] );
+	}
+}
 
 TEST(gdf_csv_test, Simple)
 {
@@ -91,6 +100,43 @@ TEST(gdf_csv_test, Simple)
 		auto sixthCol = gdf_host_column<int32_t>(args.data[5]);
 		EXPECT_THAT(firstCol.hostdata(), ::testing::ElementsAre(10, 11, 12, 13));
 		EXPECT_THAT(sixthCol.hostdata(), ::testing::ElementsAre(60, 61, 62, 63));
+	}
+}
+
+TEST(gdf_csv_float_test, SimpleFloat)
+{
+	const char* fname	= "/tmp/CsvSimpleTest.csv";
+	const char* names[]	= { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
+	const char* types[]	= { "float64", "float64", "float64", "float64", "float64",
+							"float64", "float64", "float64", "float64", "float64", };
+
+	std::ofstream outfile(fname, std::ofstream::out);
+	outfile <<	"10.5,20,30,40,50,60.1,70,80,90,100\n"\
+				"11,21,31,41,51,61,71,81,91,101\n"\
+				"12,22,32,42,52,62,72,82,92,102\n"\
+				"13.54,23,33,43,53,63,73,83,93,103\n";
+	outfile.close();
+	ASSERT_TRUE( checkFile(fname) );
+
+	{
+		csv_read_arg args{};
+		args.input_data_form = gdf_csv_input_form::FILE_PATH;
+		args.filepath_or_buffer = fname;
+		args.num_cols		= std::extent<decltype(names)>::value;
+		args.names			= names;
+		args.dtype			= types;
+		args.delimiter		= ',';
+		args.lineterminator = '\n';
+		args.decimal='.';
+		EXPECT_EQ( read_csv(&args), GDF_SUCCESS );
+
+		auto firstCol = gdf_host_column<double>(args.data[0]);
+		auto sixthCol = gdf_host_column<double>(args.data[5]);
+		std::vector<double> test_values_first({10.5, 11, 12, 13.54});
+		compare_floats(firstCol,test_values_first);
+		std::vector<double> test_values_sixth({60.1, 61, 62, 63});
+		compare_floats(sixthCol,test_values_sixth);
+
 	}
 }
 
@@ -450,3 +496,225 @@ TEST(gdf_csv_test, Dates)
 								   1149638400000, 1126828800000, 2764800000) );
 	}
 }
+
+
+
+TEST(gdf_csv_float_test, FloatTest)
+{
+	const char* fname			= "/tmp/CsvFloatTest.csv";
+	const char* names[]			= { "A" };
+	const char* types[]			= { "float64" };
+
+	std::ofstream outfile(fname, std::ofstream::out);
+	outfile << "10.5\n12.0\n123.123\n1234.1234\n";
+	outfile.close();
+	ASSERT_TRUE( checkFile(fname) );
+
+	{
+		csv_read_arg args{};
+		args.input_data_form	= gdf_csv_input_form::FILE_PATH;
+		args.filepath_or_buffer	= fname;
+		args.num_cols			= std::extent<decltype(names)>::value;
+		args.names				= names;
+		args.dtype				= types;
+		args.delimiter			= ',';
+		args.lineterminator 	= '\n';
+		args.decimal='.';
+		EXPECT_EQ( read_csv(&args), GDF_SUCCESS );
+
+		EXPECT_EQ( args.num_cols_out, args.num_cols );
+		ASSERT_EQ( args.data[0]->dtype, GDF_FLOAT64 );
+
+
+		auto ACol = gdf_host_column<double>(args.data[0]);
+		std::vector<double> test_values({10.5,12.0,123.123,1234.1234});
+		compare_floats(ACol,test_values);
+
+	}
+}
+
+
+TEST(gdf_csv_type_inference_test, InferenceTest)
+{
+	const char* fname			= "/tmp/CsvInferenceTest.csv";
+	const char* names[]			= { "A", "B" };
+	const char* types[]			= { "float64", "int32" };
+
+	std::ofstream outfile(fname, std::ofstream::out);
+	outfile << "1.1,1\n12.12,2\n123.123,3\n1234.1234,4\n";
+	outfile.close();
+	ASSERT_TRUE( checkFile(fname) );
+
+	{
+		csv_read_arg args{};
+		args.input_data_form	= gdf_csv_input_form::FILE_PATH;
+		args.filepath_or_buffer	= fname;
+		args.num_cols			= std::extent<decltype(names)>::value;
+		args.names				= names;
+		args.dtype				= types;
+		args.delimiter			= ',';
+		args.lineterminator 	= '\n';
+		args.decimal='.';
+		EXPECT_EQ( read_csv(&args), GDF_SUCCESS );
+
+		EXPECT_EQ( args.num_cols_out, args.num_cols );
+		ASSERT_EQ( args.data[0]->dtype, GDF_FLOAT64 );
+		ASSERT_EQ( args.data[1]->dtype, GDF_INT32 );
+
+		auto ACol = gdf_host_column<double>(args.data[0]);
+		std::vector<double> test_values({1.1,12.12,123.123,1234.1234});
+		compare_floats(ACol,test_values);
+
+		auto BCol = gdf_host_column<int>(args.data[1]);
+		EXPECT_THAT( BCol.hostdata(),
+				::testing::ElementsAre(1,2,3,4) );
+
+		csv_read_arg args_inferred{};
+		args_inferred.input_data_form	= gdf_csv_input_form::FILE_PATH;
+		args_inferred.filepath_or_buffer	= fname;
+		args_inferred.num_cols			= std::extent<decltype(names)>::value;
+		args_inferred.names				= names;
+		args_inferred.dtype				= nullptr;
+		args_inferred.delimiter			= ',';
+		args_inferred.lineterminator 	= '\n';
+		args_inferred.decimal='.';
+		EXPECT_EQ( read_csv(&args_inferred), GDF_SUCCESS );
+
+
+		EXPECT_EQ( args_inferred.num_cols_out, args_inferred.num_cols );
+		ASSERT_EQ( args_inferred.data[0]->dtype, GDF_FLOAT64 );
+		ASSERT_EQ( args_inferred.data[1]->dtype, GDF_INT64 );
+
+		auto AColInferred = gdf_host_column<double>(args_inferred.data[0]);
+		compare_floats(AColInferred,test_values);
+
+		auto BColInferred = gdf_host_column<int64_t>(args_inferred.data[1]);
+		EXPECT_THAT( BColInferred.hostdata(),
+				::testing::ElementsAre(1,2,3,4) );
+
+
+
+
+	}
+}
+
+TEST(gdf_csv_type_inference_header_types_test, HeaderInferenceTest)
+{
+	const char* fname			= "/tmp/CsvInferenceTest.csv";
+	const char* names[]			= { "A", "B" };
+	const char* types[]			= { "float64", "int32" };
+
+	std::ofstream outfile(fname, std::ofstream::out);
+	outfile << "float64,int32\n1.1,1\n12.12,2\n123.123,3\n1234.1234,4\n";
+	outfile.close();
+	ASSERT_TRUE( checkFile(fname) );
+
+	{
+		csv_read_arg args{};
+		args.input_data_form	= gdf_csv_input_form::FILE_PATH;
+		args.filepath_or_buffer	= fname;
+		args.num_cols			= std::extent<decltype(names)>::value;
+
+		args.dtype				= types;
+
+		args.delimiter			= ',';
+		args.lineterminator 	= '\n';
+		args.decimal='.';
+		EXPECT_EQ( read_csv(&args), GDF_SUCCESS );
+
+		EXPECT_EQ( args.num_cols_out, args.num_cols );
+		ASSERT_EQ( args.data[0]->dtype, GDF_FLOAT64 );
+		ASSERT_EQ( args.data[1]->dtype, GDF_INT32 );
+
+		auto ACol = gdf_host_column<double>(args.data[0]);
+		std::vector<double> test_values({1.1,12.12,123.123,1234.1234});
+		compare_floats(ACol,test_values);
+
+		auto BCol = gdf_host_column<int>(args.data[1]);
+		EXPECT_THAT( BCol.hostdata(),
+				::testing::ElementsAre(1,2,3,4) );
+
+		csv_read_arg args_inferred{};
+		args_inferred.input_data_form	= gdf_csv_input_form::FILE_PATH;
+		args_inferred.filepath_or_buffer	= fname;
+		args_inferred.num_cols			= std::extent<decltype(names)>::value;
+		args_inferred.header = 0;
+		args_inferred.delimiter			= ',';
+		args_inferred.lineterminator 	= '\n';
+		args_inferred.decimal='.';
+		EXPECT_EQ( read_csv(&args_inferred), GDF_SUCCESS );
+
+
+		EXPECT_EQ( args_inferred.num_cols_out, args_inferred.num_cols );
+		ASSERT_EQ( args_inferred.data[0]->dtype, GDF_FLOAT64 );
+		ASSERT_EQ( args_inferred.data[1]->dtype, GDF_INT64 );
+
+		auto AColInferred = gdf_host_column<double>(args_inferred.data[0]);
+		compare_floats(AColInferred,test_values);
+
+		auto BColInferred = gdf_host_column<int64_t>(args_inferred.data[1]);
+		EXPECT_THAT( BColInferred.hostdata(),
+				::testing::ElementsAre(1,2,3,4) );
+
+
+
+
+	}
+}
+
+
+TEST(gdf_csv_type_inference_header_from_buffer_test, BufferHeaderInferenceTest)
+{
+	const char* fname			= "float64,int32\n1.1,1\n12.12,2\n123.123,3\n1234.1234,4\n";
+	const char* names[]			= { "A", "B" };
+	const char* types[]			= { "float64", "int32" };
+		csv_read_arg args{};
+		args.input_data_form	= gdf_csv_input_form::HOST_BUFFER;
+		args.filepath_or_buffer	= fname;
+		args.buffer_size = sizeof("float64,int32\n1.1,1\n12.12,2\n123.123,3\n1234.1234,4\n");
+		args.num_cols			= std::extent<decltype(names)>::value;
+		args.dtype				= types;
+		args.delimiter			= ',';
+		args.lineterminator 	= '\n';
+		args.decimal='.';
+		EXPECT_EQ( read_csv(&args), GDF_SUCCESS );
+
+		EXPECT_EQ( args.num_cols_out, args.num_cols );
+		ASSERT_EQ( args.data[0]->dtype, GDF_FLOAT64 );
+		ASSERT_EQ( args.data[1]->dtype, GDF_INT32 );
+
+		auto ACol = gdf_host_column<double>(args.data[0]);
+		std::vector<double> test_values({1.1,12.12,123.123,1234.1234});
+		compare_floats(ACol,test_values);
+
+		auto BCol = gdf_host_column<int>(args.data[1]);
+		EXPECT_THAT( BCol.hostdata(),
+				::testing::ElementsAre(1,2,3,4) );
+
+		csv_read_arg args_inferred{};
+		args_inferred.input_data_form	= gdf_csv_input_form::HOST_BUFFER;
+		args_inferred.filepath_or_buffer	= fname;
+		args_inferred.num_cols			= std::extent<decltype(names)>::value;
+		args_inferred.buffer_size = sizeof("float64,int32\n1.1,1\n12.12,2\n123.123,3\n1234.1234,4\n");
+		args_inferred.delimiter			= ',';
+		args_inferred.lineterminator 	= '\n';
+		args_inferred.decimal='.';
+		EXPECT_EQ( read_csv(&args_inferred), GDF_SUCCESS );
+
+
+		EXPECT_EQ( args_inferred.num_cols_out, args_inferred.num_cols );
+		ASSERT_EQ( args_inferred.data[0]->dtype, GDF_FLOAT64 );
+		ASSERT_EQ( args_inferred.data[1]->dtype, GDF_INT64 );
+
+		auto AColInferred = gdf_host_column<double>(args_inferred.data[0]);
+		compare_floats(AColInferred,test_values);
+
+		auto BColInferred = gdf_host_column<int64_t>(args_inferred.data[1]);
+		EXPECT_THAT( BColInferred.hostdata(),
+				::testing::ElementsAre(1,2,3,4) );
+
+
+
+
+}
+
