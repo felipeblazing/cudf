@@ -36,9 +36,42 @@ bool gdf_is_valid(const gdf_valid_type *valid, gdf_index_type pos) {
 		return true;
 }
 
+/**
+  * Calculates the number of bytes used for a validity indicator pseudo-column for a given column's size.
+  *
+  * @node This function is different gdf_get_num_bytes_for_valids_allocation because it refers to bytes used as opposed to allocated
+  *
+  * @param[in] column_size the number of elements
+  * @return the number of bytes necessary to make available for the validity indicator pseudo-column
+  */
 CUDA_HOST_DEVICE_CALLABLE
-gdf_size_type gdf_get_num_chars_bitmask(gdf_size_type size) { 
-	return (( size + ( GDF_VALID_BITSIZE - 1)) / GDF_VALID_BITSIZE ); 
+gdf_size_type gdf_get_num_chars_bitmask(gdf_size_type column_size) { 
+	static_assert(sizeof(gdf_valid_type) == sizeof(unsigned char),
+		"gdf_get_num_chars_bitmask assumed gdf_valid_type is unsigned char");
+	return (( column_size + ( GDF_VALID_BITSIZE - 1)) / GDF_VALID_BITSIZE ); 
+}
+
+
+// Align on 4-byte boundaries in CUDF static 
+constexpr int32_t kCudfIpcAlignment = 4;
+
+ //todo, enable arrow ipc utils, and remove this method 
+CUDA_HOST_DEVICE_CALLABLE
+static gdf_size_type PaddedLength(int64_t nbytes, int32_t alignment = kCudfIpcAlignment) {   
+	return ((nbytes + alignment - 1) / alignment) * alignment; 
+}
+
+/**
+  * Calculates the number of bytes to allocate for a validity indicator pseudo-column for a given column's size.
+  *
+  * @note Note that this function assumes the valids need to be allocated to be aligned with a 4 byte boundary
+  *
+  * @param[in] column_size the number of elements
+  * @return the number of bytes necessary to allocate for the validity indicator pseudo-column
+  */
+CUDA_HOST_DEVICE_CALLABLE
+gdf_size_type gdf_get_num_bytes_for_valids_allocation(gdf_size_type column_size) { 
+	return PaddedLength(( column_size + ( GDF_VALID_BITSIZE - 1)) / GDF_VALID_BITSIZE);	
 }
 
 /* --------------------------------------------------------------------------*/
@@ -100,7 +133,9 @@ inline gdf_error soa_col_info(gdf_column** cols, size_t ncols, void** d_cols, gd
 	gdf_valid_type** h_valids = v_valids.data();
 	int* h_types = v_types.data();
 	CUDA_TRY(cudaMemcpy(d_cols, h_cols, ncols*sizeof(void*), cudaMemcpyHostToDevice));//TODO: add streams
-	CUDA_TRY(cudaMemcpy(d_valids, h_valids, ncols*sizeof(gdf_valid_type*), cudaMemcpyHostToDevice));//TODO: add streams
+	if (d_valids) {
+		CUDA_TRY(cudaMemcpy(d_valids, h_valids, ncols*sizeof(gdf_valid_type*), cudaMemcpyHostToDevice));//TODO: add streams
+	}
 	CUDA_TRY(cudaMemcpy(d_types, h_types, ncols*sizeof(int), cudaMemcpyHostToDevice));//TODO: add streams
 
 	return GDF_SUCCESS;
