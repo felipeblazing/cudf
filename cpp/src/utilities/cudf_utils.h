@@ -37,6 +37,7 @@ bool gdf_is_valid(const gdf_valid_type *valid, gdf_index_type pos) {
 		return true;
 }
 
+/*
   * Calculates the number of bytes used for a validity indicator pseudo-column for a given column's size.
   *
   * @node This function is different gdf_get_num_bytes_for_valids_allocation because it refers to bytes used as opposed to allocated
