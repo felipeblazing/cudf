@@ -58,6 +58,8 @@
 - PR #1107 Add unsupported keywords to Series.fillna
 - PR #1136 Removed `gdf_concat` 
 - PR #1148 Add cudf.sqrt for dataframes and Series
+- PR #902 Improved performance for `gdf_apply_boolean_mask` (formerly `gpu_apply_stencil`)
+
 
 ## Improvements
 

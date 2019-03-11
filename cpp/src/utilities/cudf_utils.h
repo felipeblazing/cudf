@@ -28,6 +28,7 @@ inline gdf_error set_null_count(gdf_column* col) {
   return GDF_SUCCESS;
 }
 
+// TODO: Use is_bit_set() from bit_util.cuh
 CUDA_HOST_DEVICE_CALLABLE 
 bool gdf_is_valid(const gdf_valid_type *valid, gdf_index_type pos) {
 	if ( valid )
@@ -36,7 +37,6 @@ bool gdf_is_valid(const gdf_valid_type *valid, gdf_index_type pos) {
 		return true;
 }
 
-/**
   * Calculates the number of bytes used for a validity indicator pseudo-column for a given column's size.
   *
   * @node This function is different gdf_get_num_bytes_for_valids_allocation because it refers to bytes used as opposed to allocated

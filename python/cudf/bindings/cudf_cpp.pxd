@@ -626,7 +626,7 @@ cdef extern from "cudf.h" nogil:
 
     cdef gdf_error gdf_comparison(gdf_column *lhs, gdf_column *rhs, gdf_column *output,gdf_comparison_operator operation)
 
-    cdef gdf_error gdf_apply_stencil(gdf_column *lhs, gdf_column * stencil, gdf_column * output)
+    cdef gdf_error gdf_apply_boolean_mask(gdf_column *lhs, gdf_column * stencil, gdf_column * output)
 
     cdef gdf_error gdf_hash_columns(gdf_column ** columns_to_hash, int num_columns, gdf_column * output_column, void * stream)
 

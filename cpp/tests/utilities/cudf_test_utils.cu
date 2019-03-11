@@ -1,6 +1,9 @@
 /*
  * Copyright (c) 2018, NVIDIA CORPORATION.
  *
+ * Copyright 2019 BlazingDB, Inc.
+ *     Copyright 2019 Eyal Rozenberg <eyalroz@blazingdb.com>
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,47 +19,64 @@
 
 #include "cudf_test_utils.cuh"
 
+#include <algorithm>
+
 namespace {
 
+namespace detail {
+
+// When streaming char-like types, the standard library streams tend to treat
+// them as characters rather than numbers, e.g. you would get an 'a' instead of 97.
+// The following function(s) ensure we "promote" such values to integers before
+// they're streamed
+
+template <typename T>
+const T& promote_for_streaming(const T& x) { return x; }
+
+
+//int promote_for_streaming(const char& x)          { return x; }
+//int promote_for_streaming(const unsigned char& x) { return x; }
+int promote_for_streaming(const signed char& x)   { return x; }
+
+} // namespace detail
+
+
 struct column_printer {
-  template <typename ColumnType>
-  void operator()(gdf_column const* the_column) {
+    template<typename Element>
+    void operator()(gdf_column const* the_column, unsigned min_printing_width)
+    {
+        gdf_size_type num_rows { the_column->size };
 
-    gdf_size_type const num_rows{the_column->size};
+        Element const* column_data { static_cast<Element const*>(the_column->data) };
 
-    ColumnType const* col_data{
-        static_cast<ColumnType const*>(the_column->data)};
+        std::vector<Element> host_side_data(num_rows);
+        cudaMemcpy(host_side_data.data(), column_data, num_rows * sizeof(Element), cudaMemcpyDeviceToHost);
 
-    std::vector<ColumnType> h_data(num_rows);
-    cudaMemcpy(h_data.data(), col_data, num_rows * sizeof(ColumnType),
-               cudaMemcpyDeviceToHost);
+        gdf_size_type const num_masks { gdf_get_num_chars_bitmask(num_rows) };
+        std::vector<gdf_valid_type> h_mask(num_masks, ~gdf_valid_type { 0 });
+        if (nullptr != the_column->valid) {
+            cudaMemcpy(h_mask.data(), the_column->valid, num_masks * sizeof(gdf_valid_type), cudaMemcpyDeviceToHost);
+        }
 
-    gdf_size_type const num_masks{gdf_get_num_chars_bitmask(num_rows)};
-    std::vector<gdf_valid_type> h_mask(num_masks, ~gdf_valid_type{0});
-    if (nullptr != the_column->valid) {
-      cudaMemcpy(h_mask.data(), the_column->valid,
-                 num_masks * sizeof(gdf_valid_type), cudaMemcpyDeviceToHost);
+        for (gdf_size_type i = 0; i < num_rows; ++i) {
+            std::cout << std::setw(min_printing_width);
+            if (gdf_is_valid(h_mask.data(), i)) {
+                std::cout << detail::promote_for_streaming(host_side_data[i]);
+            }
+            else {
+                std::cout << null_representative;
+            }
+            std::cout << ' ';
+        }
+        std::cout << std::endl;
     }
-
-    for (gdf_size_type i = 0; i < num_rows; ++i) {
-      // If the element is valid, print it's value
-      if (true == gdf_is_valid(h_mask.data(), i)) {
-        std::cout << h_data[i] << " ";
-      }
-      // Otherwise, print an @ to represent a null value
-      else {
-        std::cout << "@"
-                  << " ";
-      }
-    }
-    std::cout << std::endl;
-  }
 };
-}
 
-void print_gdf_column(gdf_column const * the_column)
+} // namespace
+
+void print_gdf_column(gdf_column const * the_column, unsigned min_printing_width)
 {
-    cudf::type_dispatcher(the_column->dtype, column_printer{}, the_column);
+    cudf::type_dispatcher(the_column->dtype, column_printer{}, the_column, min_printing_width);
 }
 
 void print_valid_data(const gdf_valid_type *validity_mask, 
@@ -76,7 +96,7 @@ void print_valid_data(const gdf_valid_type *validity_mask,
 
   std::transform(h_mask.begin(), h_mask.end(), std::ostream_iterator<std::string>(std::cout, " "), 
                  [](gdf_valid_type x){ 
-                   auto bits = std::bitset<GDF_VALID_BITSIZE>(x).to_string('@'); 
+                   auto bits = std::bitset<GDF_VALID_BITSIZE>(x).to_string(null_representative);
                    return std::string(bits.rbegin(), bits.rend());  
                  });
   std::cout << std::endl;
