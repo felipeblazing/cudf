@@ -214,6 +214,8 @@ typedef enum {
   GDF_GREATER,        /**< operator >  */
   GDF_LESS_EQUAL,     /**< operator <= */
   GDF_GREATER_EQUAL,  /**< operator >= */
+  GDF_INVALID_BINARY,
+  GDF_COALESCE
 } gdf_binary_operator;
 
 
