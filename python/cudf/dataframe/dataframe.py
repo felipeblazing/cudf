@@ -621,7 +621,7 @@ class DataFrame(object):
         l_old_cols = len(old_cols)
         l_new_cols = len(columns)
         if l_new_cols != l_old_cols:
-            msg = f'Length of new column names: {l_new_cols} does not ' \
+            msg = 'Length of new column names: {l_new_cols} does not ' \
                   'match length of previous column names: {l_old_cols}'
             raise ValueError(msg)
 
