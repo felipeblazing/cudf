@@ -150,14 +150,12 @@ struct GroupByWoAggTest : public GdfTest {
     EXPECT_EQ(RMM_ALLOC(&(the_column->data), host_vector.size() * sizeof(col_type), 0), RMM_SUCCESS);
     EXPECT_EQ(cudaMemcpy(the_column->data, host_vector.data(), host_vector.size() * sizeof(col_type), cudaMemcpyHostToDevice), cudaSuccess);
     if(host_valid != nullptr) {
-      auto valid_size = gdf_get_num_chars_bitmask(host_vector.size());
-      EXPECT_EQ(RMM_ALLOC((void**)&(the_column->valid), PaddedLength(valid_size), 0), RMM_SUCCESS);
-      EXPECT_EQ(cudaMemcpy(the_column->valid, host_valid, valid_size, cudaMemcpyHostToDevice), cudaSuccess);
+      EXPECT_EQ(RMM_ALLOC((void**)&(the_column->valid), gdf_valid_allocation_size(host_vector.size()), 0), RMM_SUCCESS);
+      EXPECT_EQ(cudaMemcpy(the_column->valid, host_valid, gdf_num_bitmask_elements(host_vector.size()), cudaMemcpyHostToDevice), cudaSuccess);
     }
     else {
-      int valid_size = gdf_get_num_chars_bitmask(host_vector.size());
-      EXPECT_EQ(RMM_ALLOC((void**)&(the_column->valid), PaddedLength(valid_size), 0), RMM_SUCCESS);
-      EXPECT_EQ(cudaMemset(the_column->valid, 0xff, valid_size), cudaSuccess);
+      EXPECT_EQ(RMM_ALLOC((void**)&(the_column->valid), gdf_valid_allocation_size(host_vector.size()), 0), RMM_SUCCESS);
+      EXPECT_EQ(cudaMemset(the_column->valid, 0xff, gdf_num_bitmask_elements(host_vector.size())), cudaSuccess);
     }
 
      // Fill the gdf_column members

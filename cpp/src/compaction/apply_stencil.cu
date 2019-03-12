@@ -911,7 +911,7 @@ gdf_error gdf_apply_boolean_mask(
         }
     }
     else if (cudf::is_nullable(*output)) {
-        CUDA_TRY( cudaMemsetAsync(output->valid, ~gdf_valid_type{0}, gdf_get_num_chars_bitmask(output->size), stream) );
+        CUDA_TRY( cudaMemsetAsync(output->valid, ~gdf_valid_type{0}, gdf_num_bitmask_elements(output->size), stream) );
     }
 
     CUDA_TRY( cudaStreamSynchronize(stream));

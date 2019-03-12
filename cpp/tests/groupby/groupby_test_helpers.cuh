@@ -4,6 +4,7 @@
 #include <limits>
 #include <type_traits>
 #include "valid_vectors.h"
+#include "bitmask/legacy_bitmask.hpp"
 
 //Terminating call
 //Extract the value of the Ith element of a tuple of vectors keys
@@ -322,7 +323,7 @@ void copy_gdf_column_with_nulls(gdf_column* column, std::vector<T>& vec, host_va
     vec.resize(column->size);
     cudaMemcpy(vec.data(), column->data, column->size * sizeof(T), cudaMemcpyDeviceToHost);
 
-    cudaMemcpy((uint8_t*)output_valids.data(),  column->valid, gdf_get_num_chars_bitmask(column->size), cudaMemcpyDeviceToHost);
+    cudaMemcpy((uint8_t*)output_valids.data(),  column->valid, gdf_num_bitmask_elements(column->size), cudaMemcpyDeviceToHost);
     
 }
 
@@ -401,7 +402,7 @@ template<typename T>
 void print_vector(std::vector<T>& v, const gdf_valid_type* valid = nullptr)
 {
     auto to_stringify_functor = [&valid, &v] (int index) -> std::string {
-        if ( gdf_is_valid(valid, index)) {
+        if (gdf_is_valid(valid, index)) {
             std::string ret;
             if (sizeof(v[index]) == 1)
                 ret = std::to_string((int)v[index]);

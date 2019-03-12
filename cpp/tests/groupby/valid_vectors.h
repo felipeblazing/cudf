@@ -30,15 +30,8 @@ using host_valid_pointer = std::basic_string<uint8_t>;
 // Create a valid pointer and init randomly the last half column
 static inline host_valid_pointer create_and_init_valid(size_t length)
 {
-    auto n_bytes = PaddedLength ( gdf_get_num_chars_bitmask(length) );
-    uint8_t *ptr= new uint8_t[n_bytes];
-    for (size_t i = 0; i < length; ++i) {
-        // if (i < length / 2 || std::rand() % 2 == 1) {
-        //     gdf::util::turn_bit_on(ptr, i);
-        // } else {
-        //     gdf::util::turn_bit_off(ptr, i);
-        // }
-    }
+    auto n_bytes =gdf_valid_allocation_size(length);
+    
     return host_valid_pointer(n_bytes, 'C');
 }
 
