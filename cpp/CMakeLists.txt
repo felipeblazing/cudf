@@ -215,6 +215,7 @@ add_library(cudf SHARED
             src/bitmask/bitmask_ops.cu
             src/bitmask/valid_ops.cu
             src/compaction/stream_compaction_ops.cu
+            src/compaction/apply_stencil.cu
             src/datetime/datetime_ops.cu
             src/hash/hashing.cu
             src/hash/hash_ops.cu
@@ -319,7 +320,7 @@ add_custom_command(OUTPUT INSTALL_PYTHON_CFFI
 
 add_custom_target(install_python DEPENDS cudf rmm_install_python PYTHON_CFFI INSTALL_PYTHON_CFFI)
 
-###################################################################################################
+	###################################################################################################
 # - make documentation ----------------------------------------------------------------------------
 
 add_custom_command(OUTPUT CUDF_DOXYGEN

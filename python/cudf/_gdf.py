@@ -203,6 +203,12 @@ _join_method_api = {
     'hash': libgdf.GDF_HASH
 }
 
+_null_sort_behavior_api = {
+    'null_as_largest': libgdf.GDF_NULL_AS_LARGEST,
+    'null_as_smallest': libgdf.GDF_NULL_AS_SMALLEST,
+    'null_as_largest_multisort': libgdf.GDF_NULL_AS_LARGEST_FOR_MULTISORT
+}
+
 
 def cffi_view_to_column_mem(cffi_view):
     gdf_dtype = cffi_view.dtype
@@ -259,12 +265,15 @@ def apply_join(col_lhs, col_rhs, how, method='hash'):
 
     joiner = _join_how_api[how]
     method_api = _join_method_api[method]
+    null_sort_behavior_api = _null_sort_behavior_api['null_as_largest']
     gdf_context = ffi.new('gdf_context*')
 
     if method == 'hash':
-        libgdf.gdf_context_view(gdf_context, 0, method_api, 0, 0, 0)
+        libgdf.gdf_create_context(gdf_context, 0, method_api, 0, 0, 0,
+                                  null_sort_behavior_api)
     elif method == 'sort':
-        libgdf.gdf_context_view(gdf_context, 1, method_api, 0, 0, 0)
+        libgdf.gdf_create_context(gdf_context, 1, method_api, 0, 0, 0,
+                                  null_sort_behavior_api)
     else:
         msg = "method not supported"
         raise ValueError(msg)
@@ -303,6 +312,88 @@ def apply_join(col_lhs, col_rhs, how, method='hash'):
     libgdf.gdf_column_free(col_result_r)
 
 
+<<<<<<< HEAD
+=======
+def libgdf_join(col_lhs, col_rhs, on, how, method='sort'):
+    joiner = _join_how_api[how]
+    method_api = _join_method_api[method]
+    null_sort_behavior_api = _null_sort_behavior_api['null_as_largest']
+    gdf_context = ffi.new('gdf_context*')
+
+    libgdf.gdf_create_context(gdf_context, 0, method_api, 0, 0, 0,
+                              null_sort_behavior_api)
+
+    if how not in ['left', 'inner', 'outer']:
+        msg = "new join api only supports left or inner"
+        raise ValueError(msg)
+
+    list_lhs = []
+    list_rhs = []
+    result_cols = []
+
+    result_col_names = []
+
+    left_idx = []
+    right_idx = []
+    # idx = 0
+    for name, col in col_lhs.items():
+        list_lhs.append(col._column.cffi_view)
+        if name not in on:
+            result_cols.append(columnview(0, None, dtype=col._column.dtype))
+            result_col_names.append(name)
+
+    for name in on:
+        result_cols.append(columnview(0, None,
+                                      dtype=col_lhs[name]._column.dtype))
+        result_col_names.append(name)
+        left_idx.append(list(col_lhs.keys()).index(name))
+        right_idx.append(list(col_rhs.keys()).index(name))
+
+    for name, col in col_rhs.items():
+        list_rhs.append(col._column.cffi_view)
+        if name not in on:
+            result_cols.append(columnview(0, None, dtype=col._column.dtype))
+            result_col_names.append(name)
+
+    num_cols_to_join = len(on)
+    result_num_cols = len(list_lhs) + len(list_rhs) - num_cols_to_join
+
+    joiner(list_lhs,
+           len(list_lhs),
+           left_idx,
+           list_rhs,
+           len(list_rhs),
+           right_idx,
+           num_cols_to_join,
+           result_num_cols,
+           result_cols,
+           ffi.NULL,
+           ffi.NULL,
+           gdf_context)
+
+    res = []
+    valids = []
+
+    for col in result_cols:
+
+        intaddr = int(ffi.cast("uintptr_t", col.data))
+        res.append(rmm.device_array_from_ptr(ptr=intaddr,
+                                             nelem=col.size,
+                                             dtype=gdf_to_np_dtype(col.dtype),
+                                             finalizer=rmm._make_finalizer(
+                                                 intaddr, 0)))
+        intaddr = int(ffi.cast("uintptr_t", col.valid))
+        valids.append(rmm.device_array_from_ptr(ptr=intaddr,
+                                                nelem=calc_chunk_size(
+                                                    col.size, mask_bitsize),
+                                                dtype=mask_dtype,
+                                                finalizer=rmm._make_finalizer(
+                                                    intaddr, 0)))
+
+    return res, valids
+
+
+>>>>>>> blazing-fork/develop_stage4
 def apply_prefixsum(col_inp, col_out, inclusive):
     libgdf.gdf_prefixsum(col_inp, col_out, inclusive)
 
@@ -540,8 +631,9 @@ def quantile(column, quant, method, exact):
     """
     gdf_context = ffi.new('gdf_context*')
     method_api = _join_method_api['sort']
-    libgdf.gdf_context_view(gdf_context, 0, method_api, 0, 0, 0)
-    # libgdf.gdf_context_view(gdf_context, 0, method_api, 0)
+    null_sort_behavior_api = _null_sort_behavior_api['null_as_largest']
+    libgdf.gdf_create_context(gdf_context, 0, method_api, 0, 0, 0,
+                              null_sort_behavior_api)
     # px = ffi.new("double *")
     res = []
     for q in quant:

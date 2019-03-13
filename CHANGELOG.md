@@ -58,9 +58,10 @@
 - PR #1091 Add `indicator=` and `suffixes=` keywords to merge
 - PR #1107 Add unsupported keywords to Series.fillna
 - PR #1032 Add string support to cuDF python
-- PR #1136 Removed `gdf_concat`
-- PR #1153 Added function for getting the padded allocation size for valid bitmask
+- PR #1136 Removed `gdf_concat` 
+- PR #1153 Added function for getting the padded allocation size for valid bitmask 
 - PR #1148 Add cudf.sqrt for dataframes and Series
+- PR #902 Improved performance for `gdf_apply_boolean_mask` (formerly `gpu_apply_stencil`)
 - PR #1159 Add Python bindings for libcudf dlpack functions
 - PR #1155 Add __array_ufunc__ for DataFrame and Series for sqrt
 - PR #1168 to_frame for series accepts a name argument
