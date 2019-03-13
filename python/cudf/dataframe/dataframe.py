@@ -640,7 +640,7 @@ class DataFrame(object):
         old_length = len(self._index)
 
         if new_length != old_length:
-            msg = f'Length mismatch: Expected index has {old_length}' \
+            msg = 'Length mismatch: Expected index has {old_length}' \
                     ' elements, new values have {new_length} elements'
             raise ValueError(msg)
 
