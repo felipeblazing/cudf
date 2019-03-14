@@ -367,11 +367,8 @@ bool gdf_equal_columns(gdf_column* left, gdf_column* right)
     return false;
   
   return true;
-<<<<<<< HEAD
-  }
-=======
+
 }
->>>>>>> blazing-fork/develop_stage4
 
 
 #endif

@@ -219,13 +219,8 @@ typedef enum {
   GDF_GREATER,        /**< operator >  */
   GDF_LESS_EQUAL,     /**< operator <= */
   GDF_GREATER_EQUAL,  /**< operator >= */
-<<<<<<< HEAD
   GDF_COALESCE,       ///< operator x,y  x is null ? y : x
   GDF_INVALID_BINARY  ///< invalid operation
-=======
-  GDF_INVALID_BINARY,
-  GDF_COALESCE
->>>>>>> blazing-fork/develop_stage4
 } gdf_binary_operator;
 
 
