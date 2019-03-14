@@ -73,8 +73,14 @@ gdf_error nvcategory_gather(gdf_column * column, NVCategory * nv_category){
       NVStrings* strs = NVStrings::create_from_array(&empty,1);
       nv_category = nv_category->add_keys_and_remap(*strs);
 
+      //indices were modified to increase all by 1, we are praying to the universe that null is always at index 0 for this to work
+      thrust::device_ptr<nv_category_index_type> indices = thrust::device_pointer_cast(static_cast<nv_category_index_type*>(column->data));
+      thrust::transform(thrust::cuda::par,indices,indices+column->size(),thrust::make_constant_iterator(1),indices, thrust::plus<nv_category_index_type>());
       destroy_category = true;
       null_index = nv_category->get_value(nullptr);
+
+
+
 
       NVStrings::destroy(strs);
 
