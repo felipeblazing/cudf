@@ -15,7 +15,7 @@
 #include <cstring>
 #include "tests/utilities/cudf_test_utils.cuh"
 #include "tests/utilities/cudf_test_fixtures.h"
-#include "bitmask/bit_mask.h"
+#include "bitmask/bit_mask.cuh"
 
 // See this header for all of the handling of valids' vectors 
 #include "tests/utilities/valid_vectors.h"
@@ -216,7 +216,9 @@ TEST_F(NVCategoryTest, TEST_NVCATEGORY_SORTING)
 	cudaMemset(asc_desc, minus_one, 1);
 
 	//doesnt output nvcategory type columns so works as is
-	gdf_error err = gdf_order_by(input_columns, asc_desc, 1, output_column, false);
+	gdf_context ctxt;
+	ctxt.flag_null_sort_behavior = GDF_NULL_AS_LARGEST;
+	gdf_error err = gdf_order_by(input_columns, asc_desc, 1, output_column, &ctxt);
 	EXPECT_EQ(GDF_SUCCESS, err);
 
 	if(print){

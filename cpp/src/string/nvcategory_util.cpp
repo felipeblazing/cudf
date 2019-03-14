@@ -67,26 +67,33 @@ gdf_error nvcategory_gather(gdf_column * column, NVCategory * nv_category){
   bool destroy_category = false;
   if(column->null_count > 0){
 
-    if(nv_category->get_value(nullptr) != 0){
+    nv_category_index_type null_index = nv_category->get_value(nullptr);
+    if(null_index == -1){
       const char* empty = 0;
       NVStrings* strs = NVStrings::create_from_array(&empty,1);
+      nv_category = nv_category->add_keys_and_remap(*strs);
 
       destroy_category = true;
-      nv_category_index_type null_index = nv_category->get_value(nullptr);
-      gdf_column null_index_column;
+      null_index = nv_category->get_value(nullptr);
 
-      //this GDF_INT32 could change if this changes in nvcategory
-      gdf_column_view(&null_index_column, nullptr, nullptr, 1, GDF_INT32);
-      int col_width;
-      get_column_byte_width(&null_index_column, &col_width);
-      RMM_TRY( RMM_ALLOC(&(null_index_column.data), col_width, 0) ); // TODO: non-default stream?
-      null_index_column.valid = nullptr;
-      null_index_column.null_count = 0;
-      nv_category = nv_category->add_keys_and_remap(strs);
-      gdf_replace_nulls(column, &null_index_column);
       NVStrings::destroy(strs);
-      gdf_column_free(null_index_column);
+
     }
+    GDF_REQUIRE(null_index == 0, GDF_INVALID_API_CALL);
+    gdf_column null_index_column;
+
+    //this GDF_INT32 could change if this changes in nvcategory
+    gdf_column_view(&null_index_column, nullptr, nullptr, 1, GDF_STRING_CATEGORY);
+    int col_width;
+    get_column_byte_width(&null_index_column, &col_width);
+    RMM_TRY( RMM_ALLOC(&(null_index_column.data), col_width, 0) ); // TODO: non-default stream?
+    CUDA_TRY(cudaMemcpy(null_index_column.data,&null_index,col_width,cudaMemcpyHostToDevice));
+    null_index_column.valid = nullptr;
+    null_index_column.null_count = 0;
+
+    gdf_error err = gdf_replace_nulls(column, &null_index_column);
+    CUDF_EXPECTS(err == GDF_SUCCESS,"couldnn replace");
+    gdf_column_free(&null_index_column);
 
   }
 

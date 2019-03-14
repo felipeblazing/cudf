@@ -453,10 +453,10 @@ gdf_error multi_pass_avg(int ncols,
                          gdf_column* out_aggregation_column)
 {
   // Allocate intermediate output gdf_columns for the output of the Count and Sum aggregations
-  const size_t output_size = out_aggregation_column->size;
+  //const size_t output_size = out_aggregation_column->size;
 
   // Make sure the result is sorted so the output is in identical order
-  bool ctxt = true;
+  //bool ctxt = true;
 
   // FIXME Currently, Sort based groupby assumes the type of the input aggregation column and 
   // the output aggregation column are the same. This doesn't work for COUNT

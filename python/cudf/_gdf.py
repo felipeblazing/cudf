@@ -312,8 +312,7 @@ def apply_join(col_lhs, col_rhs, how, method='hash'):
     libgdf.gdf_column_free(col_result_r)
 
 
-<<<<<<< HEAD
-=======
+
 def libgdf_join(col_lhs, col_rhs, on, how, method='sort'):
     joiner = _join_how_api[how]
     method_api = _join_method_api[method]
@@ -393,7 +392,7 @@ def libgdf_join(col_lhs, col_rhs, on, how, method='sort'):
     return res, valids
 
 
->>>>>>> blazing-fork/develop_stage4
+
 def apply_prefixsum(col_inp, col_out, inclusive):
     libgdf.gdf_prefixsum(col_inp, col_out, inclusive)
 
